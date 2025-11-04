@@ -10,21 +10,12 @@ class CombatSimulatorGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("전투 시뮬레이터 V3.0")
-        self.root.geometry("800x700")
+        self.root.geometry("900x800")
         
         self.calculator = CombatCalculator()
         self.unit_types = ['보병', '기병', '마법병', '공성병']
         
         self.create_widgets()
-    
-    def load_heroes(self):
-        """영웅 목록을 로드하고 콤보박스에 설정합니다."""
-        hero_names = list(self.calculator.heroes.keys())
-        self.hero_a_combo['values'] = hero_names
-        self.hero_b_combo['values'] = hero_names
-        if hero_names:
-            self.hero_a_combo.current(0)
-            self.hero_b_combo.current(0)
     
     def create_widgets(self):
         """GUI 위젯 생성"""
@@ -37,9 +28,13 @@ class CombatSimulatorGUI:
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
+        # 상단 입력 영역 프레임 (A군과 B군을 나란히 배치)
+        top_frame = ttk.Frame(main_frame)
+        top_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        
         # A군 입력 섹션
-        army_a_frame = ttk.LabelFrame(main_frame, text="A군 병력", padding="10")
-        army_a_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        army_a_frame = ttk.LabelFrame(top_frame, text="A군 병력", padding="10")
+        army_a_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
         
         self.army_a_entries = {}
         for i, unit_type in enumerate(self.unit_types):
@@ -62,20 +57,41 @@ class CombatSimulatorGUI:
         self.food_a_entry.insert(0, "무제한")
         self.food_a_entry.pack(side=tk.LEFT, padx=5)
         
-        # A군 영웅 선택
-        hero_a_frame = ttk.Frame(army_a_frame)
-        hero_a_frame.grid(row=len(self.unit_types) + 1, column=0, sticky="ew", pady=5)
-        ttk.Label(hero_a_frame, text="영웅:", width=10).pack(side=tk.LEFT, padx=5)
-        self.hero_a_var = tk.StringVar()
-        self.hero_a_combo = ttk.Combobox(hero_a_frame, textvariable=self.hero_a_var, 
-                                         width=15, state="readonly")
-        self.hero_a_combo.pack(side=tk.LEFT, padx=5)
+        # A군 장비 선택
+        equipment_a_label = ttk.Label(army_a_frame, text="플레이어 장비:")
+        equipment_a_label.grid(row=len(self.unit_types) + 1, column=0, sticky="w", pady=(10, 5), padx=5)
+        
+        equipment_a_scroll_frame = ttk.Frame(army_a_frame)
+        equipment_a_scroll_frame.grid(row=len(self.unit_types) + 2, column=0, sticky="ew", pady=5)
+        
+        equipment_a_canvas = tk.Canvas(equipment_a_scroll_frame, height=100)
+        equipment_a_scrollbar = ttk.Scrollbar(equipment_a_scroll_frame, orient="vertical", command=equipment_a_canvas.yview)
+        equipment_a_scrollable_frame = ttk.Frame(equipment_a_canvas)
+        
+        equipment_a_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: equipment_a_canvas.configure(scrollregion=equipment_a_canvas.bbox("all"))
+        )
+        
+        equipment_a_canvas.create_window((0, 0), window=equipment_a_scrollable_frame, anchor="nw")
+        equipment_a_canvas.configure(yscrollcommand=equipment_a_scrollbar.set)
+        
+        self.equipment_a_vars = {}
+        equipment_list = list(self.calculator.equipment.values())
+        for equipment in equipment_list:
+            var = tk.BooleanVar()
+            self.equipment_a_vars[equipment['id']] = var
+            check = ttk.Checkbutton(equipment_a_scrollable_frame, text=equipment['name'], variable=var)
+            check.pack(anchor="w", padx=5, pady=2)
+        
+        equipment_a_canvas.pack(side="left", fill="both", expand=True)
+        equipment_a_scrollbar.pack(side="right", fill="y")
         
         army_a_frame.columnconfigure(0, weight=1)
         
         # B군 입력 섹션
-        army_b_frame = ttk.LabelFrame(main_frame, text="B군 병력", padding="10")
-        army_b_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        army_b_frame = ttk.LabelFrame(top_frame, text="B군 병력", padding="10")
+        army_b_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
         
         self.army_b_entries = {}
         for i, unit_type in enumerate(self.unit_types):
@@ -98,23 +114,45 @@ class CombatSimulatorGUI:
         self.food_b_entry.insert(0, "무제한")
         self.food_b_entry.pack(side=tk.LEFT, padx=5)
         
-        # B군 영웅 선택
-        hero_b_frame = ttk.Frame(army_b_frame)
-        hero_b_frame.grid(row=len(self.unit_types) + 1, column=0, sticky="ew", pady=5)
-        ttk.Label(hero_b_frame, text="영웅:", width=10).pack(side=tk.LEFT, padx=5)
-        self.hero_b_var = tk.StringVar()
-        self.hero_b_combo = ttk.Combobox(hero_b_frame, textvariable=self.hero_b_var, 
-                                         width=15, state="readonly")
-        self.hero_b_combo.pack(side=tk.LEFT, padx=5)
+        # B군 장비 선택
+        equipment_b_label = ttk.Label(army_b_frame, text="플레이어 장비:")
+        equipment_b_label.grid(row=len(self.unit_types) + 1, column=0, sticky="w", pady=(10, 5), padx=5)
+        
+        equipment_b_scroll_frame = ttk.Frame(army_b_frame)
+        equipment_b_scroll_frame.grid(row=len(self.unit_types) + 2, column=0, sticky="ew", pady=5)
+        
+        equipment_b_canvas = tk.Canvas(equipment_b_scroll_frame, height=100)
+        equipment_b_scrollbar = ttk.Scrollbar(equipment_b_scroll_frame, orient="vertical", command=equipment_b_canvas.yview)
+        equipment_b_scrollable_frame = ttk.Frame(equipment_b_canvas)
+        
+        equipment_b_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: equipment_b_canvas.configure(scrollregion=equipment_b_canvas.bbox("all"))
+        )
+        
+        equipment_b_canvas.create_window((0, 0), window=equipment_b_scrollable_frame, anchor="nw")
+        equipment_b_canvas.configure(yscrollcommand=equipment_b_scrollbar.set)
+        
+        self.equipment_b_vars = {}
+        equipment_list = list(self.calculator.equipment.values())
+        for equipment in equipment_list:
+            var = tk.BooleanVar()
+            self.equipment_b_vars[equipment['id']] = var
+            check = ttk.Checkbutton(equipment_b_scrollable_frame, text=equipment['name'], variable=var)
+            check.pack(anchor="w", padx=5, pady=2)
+        
+        equipment_b_canvas.pack(side="left", fill="both", expand=True)
+        equipment_b_scrollbar.pack(side="right", fill="y")
         
         army_b_frame.columnconfigure(0, weight=1)
         
-        # 영웅 목록 로드 및 설정
-        self.load_heroes()
+        # 옵션 및 버튼 프레임 (상단 입력 영역 아래)
+        control_frame = ttk.Frame(main_frame)
+        control_frame.pack(fill=tk.X, pady=5)
         
         # 옵션 프레임
-        option_frame = ttk.Frame(main_frame)
-        option_frame.pack(fill=tk.X, pady=5)
+        option_frame = ttk.Frame(control_frame)
+        option_frame.pack(side=tk.LEFT, padx=5)
         
         self.multi_round_var = tk.BooleanVar()
         multi_round_check = ttk.Checkbutton(option_frame, text="멀티 라운드 전투 (한쪽 전멸까지)", 
@@ -122,8 +160,8 @@ class CombatSimulatorGUI:
         multi_round_check.pack(side=tk.LEFT, padx=5)
         
         # 버튼 프레임
-        button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=10)
+        button_frame = ttk.Frame(control_frame)
+        button_frame.pack(side=tk.LEFT, padx=10)
         
         calc_button = ttk.Button(button_frame, text="전투 계산", 
                                 command=self.calculate_combat)
@@ -133,7 +171,7 @@ class CombatSimulatorGUI:
                                  command=self.reset_inputs)
         reset_button.pack(side=tk.LEFT, padx=5)
         
-        # 결과 섹션
+        # 결과 섹션 (하단)
         result_frame = ttk.LabelFrame(main_frame, text="전투 결과", padding="10")
         result_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         
@@ -173,12 +211,15 @@ class CombatSimulatorGUI:
         except ValueError:
             raise ValueError("식량은 정수 또는 '무제한'이어야 합니다.")
     
-    def get_hero(self, hero_var):
-        """영웅 선택 값을 가져옵니다."""
-        hero_name = hero_var.get()
-        if hero_name == "없음" or hero_name == "":
-            return None
-        return self.calculator.heroes.get(hero_name)
+    def get_equipment_list(self, equipment_vars):
+        """선택된 장비 리스트를 반환합니다."""
+        equipment_list = []
+        for equipment_id, var in equipment_vars.items():
+            if var.get():
+                equipment = self.calculator.equipment.get(equipment_id)
+                if equipment:
+                    equipment_list.append(equipment)
+        return equipment_list if equipment_list else None
     
     def calculate_combat(self):
         """전투를 계산하고 결과를 표시합니다."""
@@ -191,9 +232,9 @@ class CombatSimulatorGUI:
             food_a = self.get_food_value(self.food_a_entry)
             food_b = self.get_food_value(self.food_b_entry)
             
-            # 영웅 가져오기
-            hero_a = self.get_hero(self.hero_a_var)
-            hero_b = self.get_hero(self.hero_b_var)
+            # 장비 가져오기
+            equipment_list_a = self.get_equipment_list(self.equipment_a_vars)
+            equipment_list_b = self.get_equipment_list(self.equipment_b_vars)
             
             # 양쪽 모두 병력이 있는지 확인
             total_a = sum(army_a_units.values())
@@ -212,10 +253,10 @@ class CombatSimulatorGUI:
                 multi_result = self.calculator.simulate_multi_round_combat(
                     army_a_units, army_b_units,
                     initial_food_a=food_a, initial_food_b=food_b,
-                    hero_a=hero_a, hero_b=hero_b
+                    equipment_list_a=equipment_list_a, equipment_list_b=equipment_list_b
                 )
                 self.display_multi_round_results(army_a_units, army_b_units, multi_result, 
-                                                 food_a, food_b, hero_a, hero_b)
+                                                 food_a, food_b, equipment_list_a, equipment_list_b)
             else:
                 # 단일 라운드 전투 (식량 무제한으로 간주)
                 has_food_a = food_a is None or food_a > 0
@@ -223,16 +264,16 @@ class CombatSimulatorGUI:
                 result = self.calculator.simulate_combat(
                     army_a_units, army_b_units,
                     has_food_a=has_food_a, has_food_b=has_food_b,
-                    hero_a=hero_a, hero_b=hero_b
+                    equipment_list_a=equipment_list_a, equipment_list_b=equipment_list_b
                 )
-                self.display_results(army_a_units, army_b_units, result, hero_a, hero_b)
+                self.display_results(army_a_units, army_b_units, result, equipment_list_a, equipment_list_b)
             
         except ValueError as e:
             messagebox.showerror("입력 오류", str(e))
         except Exception as e:
             messagebox.showerror("오류", f"계산 중 오류가 발생했습니다: {str(e)}")
     
-    def display_results(self, army_a_units, army_b_units, result, hero_a=None, hero_b=None):
+    def display_results(self, army_a_units, army_b_units, result, equipment_list_a=None, equipment_list_b=None):
         """전투 결과를 텍스트 영역에 표시합니다."""
         self.result_text.delete(1.0, tk.END)
         
@@ -244,8 +285,9 @@ class CombatSimulatorGUI:
         
         # A군 정보
         output.append("【 A군 】")
-        if hero_a:
-            output.append(f"영웅: {hero_a.get('name', '없음')}")
+        if equipment_list_a:
+            equipment_names = [eq.get('name', '알 수 없음') for eq in equipment_list_a]
+            output.append(f"장비: {', '.join(equipment_names)}")
         output.append(f"총 HP: {result['army_a_total_hp']:,.2f}")
         output.append(f"최종 공격력 (FAP): {result['army_a_fap']:,.2f}")
         output.append(f"사상률: {result['army_a_casualty_ratio']:.2%}")
@@ -278,8 +320,9 @@ class CombatSimulatorGUI:
         
         # B군 정보
         output.append("【 B군 】")
-        if hero_b:
-            output.append(f"영웅: {hero_b.get('name', '없음')}")
+        if equipment_list_b:
+            equipment_names = [eq.get('name', '알 수 없음') for eq in equipment_list_b]
+            output.append(f"장비: {', '.join(equipment_names)}")
         output.append(f"총 HP: {result['army_b_total_hp']:,.2f}")
         output.append(f"최종 공격력 (FAP): {result['army_b_fap']:,.2f}")
         output.append(f"사상률: {result['army_b_casualty_ratio']:.2%}")
@@ -315,7 +358,7 @@ class CombatSimulatorGUI:
         self.result_text.see(1.0)
     
     def display_multi_round_results(self, initial_army_a, initial_army_b, multi_result,
-                                    food_a=None, food_b=None, hero_a=None, hero_b=None):
+                                    food_a=None, food_b=None, equipment_list_a=None, equipment_list_b=None):
         """멀티 라운드 전투 결과를 텍스트 영역에 표시합니다."""
         self.result_text.delete(1.0, tk.END)
         
@@ -327,13 +370,15 @@ class CombatSimulatorGUI:
         output.append(f"총 라운드 수: {multi_result['total_rounds']}")
         output.append("")
         
-        # 영웅 정보
-        if hero_a or hero_b:
-            output.append("영웅:")
-            if hero_a:
-                output.append(f"  A군: {hero_a.get('name', '없음')}")
-            if hero_b:
-                output.append(f"  B군: {hero_b.get('name', '없음')}")
+        # 장비 정보
+        if equipment_list_a or equipment_list_b:
+            output.append("장비:")
+            if equipment_list_a:
+                equipment_names = [eq.get('name', '알 수 없음') for eq in equipment_list_a]
+                output.append(f"  A군: {', '.join(equipment_names)}")
+            if equipment_list_b:
+                equipment_names = [eq.get('name', '알 수 없음') for eq in equipment_list_b]
+                output.append(f"  B군: {', '.join(equipment_names)}")
             output.append("")
         
         # 최종 승자 표시
@@ -466,10 +511,12 @@ class CombatSimulatorGUI:
         self.food_a_entry.insert(0, "무제한")
         self.food_b_entry.delete(0, tk.END)
         self.food_b_entry.insert(0, "무제한")
-        if hasattr(self, 'hero_a_combo'):
-            self.hero_a_combo.current(0)
-        if hasattr(self, 'hero_b_combo'):
-            self.hero_b_combo.current(0)
+        if hasattr(self, 'equipment_a_vars'):
+            for var in self.equipment_a_vars.values():
+                var.set(False)
+        if hasattr(self, 'equipment_b_vars'):
+            for var in self.equipment_b_vars.values():
+                var.set(False)
         self.result_text.delete(1.0, tk.END)
 
 

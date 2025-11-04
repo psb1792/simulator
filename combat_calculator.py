@@ -1,5 +1,5 @@
 """전투 계산 엔진"""
-from data_loader import load_unit_stats, load_type_effectiveness, get_food_consumption, load_heroes
+from data_loader import load_unit_stats, load_type_effectiveness, get_food_consumption, load_equipment
 
 
 class CombatCalculator:
@@ -9,7 +9,7 @@ class CombatCalculator:
         self.unit_stats = load_unit_stats()
         self.effectiveness = load_type_effectiveness()
         self.food_consumption = get_food_consumption()
-        self.heroes = load_heroes()
+        self.equipment = load_equipment()
     
     def calculate_food_consumption(self, army_units):
         """
@@ -43,13 +43,13 @@ class CombatCalculator:
             return fap * 0.3  # 70% 감소 = 원래 값의 30%
         return fap
     
-    def calculate_total_hp(self, army_units, hero=None):
+    def calculate_total_hp(self, army_units, equipment_list=None):
         """
-        군대의 총 HP를 계산합니다. 영웅의 HP 보너스를 적용합니다.
+        군대의 총 HP를 계산합니다. 장비의 HP 보너스를 적용합니다.
         
         Args:
             army_units (dict): 병종별 수량 딕셔너리 (예: {'보병': 50, '기병': 30})
-            hero (dict): 영웅 데이터 (None이면 영웅 없음)
+            equipment_list (list): 장비 딕셔너리 리스트 (None이면 장비 없음)
         
         Returns:
             float: 총 HP
@@ -59,23 +59,25 @@ class CombatCalculator:
             if quantity > 0 and unit_type in self.unit_stats:
                 total_hp += quantity * self.unit_stats[unit_type]['hp']
         
-        # 영웅 HP 보너스 적용
-        if hero and hero.get('effects'):
+        # 장비 HP 보너스 적용 (곱연산)
+        if equipment_list:
             hp_multiplier = 1.0
-            for effect in hero['effects']:
-                if effect.get('type') == 'hp_bonus':
-                    hp_multiplier *= effect.get('value', 1.0)
+            for equipment in equipment_list:
+                if equipment and equipment.get('effects'):
+                    for effect in equipment['effects']:
+                        if effect.get('type') == 'hp_bonus':
+                            hp_multiplier *= effect.get('value', 1.0)
             total_hp *= hp_multiplier
         
         return total_hp
     
-    def calculate_base_total_attack(self, army_units, hero=None):
+    def calculate_base_total_attack(self, army_units, equipment_list=None):
         """
-        군대의 기본 총 공격력을 계산합니다. 영웅의 공격력 보너스를 적용합니다.
+        군대의 기본 총 공격력을 계산합니다. 장비의 공격력 보너스를 적용합니다.
         
         Args:
             army_units (dict): 병종별 수량 딕셔너리
-            hero (dict): 영웅 데이터 (None이면 영웅 없음)
+            equipment_list (list): 장비 딕셔너리 리스트 (None이면 장비 없음)
         
         Returns:
             float: 기본 총 공격력
@@ -85,38 +87,42 @@ class CombatCalculator:
             if quantity > 0 and unit_type in self.unit_stats:
                 total_attack += quantity * self.unit_stats[unit_type]['attack']
         
-        # 영웅 공격력 보너스 적용
-        if hero and hero.get('effects'):
+        # 장비 공격력 보너스 적용 (곱연산)
+        if equipment_list:
             attack_multiplier = 1.0
-            for effect in hero['effects']:
-                if effect.get('type') == 'attack_bonus':
-                    attack_multiplier *= effect.get('value', 1.0)
+            for equipment in equipment_list:
+                if equipment and equipment.get('effects'):
+                    for effect in equipment['effects']:
+                        if effect.get('type') == 'attack_bonus':
+                            attack_multiplier *= effect.get('value', 1.0)
             total_attack *= attack_multiplier
         
         return total_attack
     
-    def calculate_hp_ratios(self, army_units, hero=None):
+    def calculate_hp_ratios(self, army_units, equipment_list=None):
         """
         군대의 병종별 HP 비율을 계산합니다.
         
         Args:
             army_units (dict): 병종별 수량 딕셔너리
-            hero (dict): 영웅 데이터 (None이면 영웅 없음)
+            equipment_list (list): 장비 딕셔너리 리스트 (None이면 장비 없음)
         
         Returns:
             dict: 병종별 HP 비율 딕셔너리
         """
-        total_hp = self.calculate_total_hp(army_units, hero)
+        total_hp = self.calculate_total_hp(army_units, equipment_list)
         
         if total_hp == 0:
             return {}
         
-        # 영웅 HP 보너스 적용
+        # 장비 HP 보너스 적용 (곱연산)
         hp_multiplier = 1.0
-        if hero and hero.get('effects'):
-            for effect in hero['effects']:
-                if effect.get('type') == 'hp_bonus':
-                    hp_multiplier *= effect.get('value', 1.0)
+        if equipment_list:
+            for equipment in equipment_list:
+                if equipment and equipment.get('effects'):
+                    for effect in equipment['effects']:
+                        if effect.get('type') == 'hp_bonus':
+                            hp_multiplier *= effect.get('value', 1.0)
         
         ratios = {}
         for unit_type, quantity in army_units.items():
@@ -127,18 +133,18 @@ class CombatCalculator:
         return ratios
     
     def calculate_final_attack_power(self, attacker_units, defender_units, 
-                                     attacker_hero=None, defender_hero=None, enemy_attack_penalty=1.0):
+                                     attacker_equipment_list=None, defender_equipment_list=None, enemy_attack_penalty=1.0):
         """
         공격자의 최종 공격력(FAP)을 계산합니다.
         상대방의 병종별 HP 비율을 고려한 가중 평균을 사용합니다.
-        영웅 효과를 적용합니다.
+        장비 효과를 적용합니다.
         
         Args:
             attacker_units (dict): 공격자 병종별 수량
             defender_units (dict): 방어자 병종별 수량
-            attacker_hero (dict): 공격자 영웅 데이터 (None이면 영웅 없음)
-            defender_hero (dict): 방어자 영웅 데이터 (None이면 영웅 없음, 적 공격력 패널티에 사용)
-            enemy_attack_penalty (float): 적 공격력 패널티 (기본값 1.0, 영웅 효과로 인한 감소)
+            attacker_equipment_list (list): 공격자 장비 딕셔너리 리스트 (None이면 장비 없음)
+            defender_equipment_list (list): 방어자 장비 딕셔너리 리스트 (None이면 장비 없음, 적 공격력 패널티에 사용)
+            enemy_attack_penalty (float): 적 공격력 패널티 (기본값 1.0, 장비 효과로 인한 감소)
         
         Returns:
             float: 최종 공격력 (FAP)
@@ -149,32 +155,36 @@ class CombatCalculator:
             if quantity > 0 and unit_type in self.unit_stats:
                 base_total_attack_no_bonus += quantity * self.unit_stats[unit_type]['attack']
         
-        # 영웅 공격력 보너스 계산
+        # 장비 공격력 보너스 계산 (곱연산)
         attack_multiplier = 1.0
-        if attacker_hero and attacker_hero.get('effects'):
-            for effect in attacker_hero['effects']:
-                if effect.get('type') == 'attack_bonus':
-                    attack_multiplier *= effect.get('value', 1.0)
+        if attacker_equipment_list:
+            for equipment in attacker_equipment_list:
+                if equipment and equipment.get('effects'):
+                    for effect in equipment['effects']:
+                        if effect.get('type') == 'attack_bonus':
+                            attack_multiplier *= effect.get('value', 1.0)
         
         # 보너스 적용된 기본 총 공격력
         base_total_attack = base_total_attack_no_bonus * attack_multiplier
         
-        # 2. 방어자의 병종별 HP 비율 계산 (방어자 영웅 효과 적용)
-        defender_hp_ratios = self.calculate_hp_ratios(defender_units, defender_hero)
+        # 2. 방어자의 병종별 HP 비율 계산 (방어자 장비 효과 적용)
+        defender_hp_ratios = self.calculate_hp_ratios(defender_units, defender_equipment_list)
         
         # 3. 최종 공격력 계산 (가중 평균)
         # 공격자의 기본 총 공격력 전체에 방어자 병종별 HP 비율을 고려한 상성 계수를 적용
         final_attack_power = 0
         
-        # 공격자 영웅의 상성 보너스 수집
+        # 공격자 장비의 상성 보너스 수집 (합연산)
         type_effectiveness_bonuses = {}
-        if attacker_hero and attacker_hero.get('effects'):
-            for effect in attacker_hero['effects']:
-                if effect.get('type') == 'type_effectiveness_bonus':
-                    key = (effect.get('attacker'), effect.get('defender'))
-                    if key not in type_effectiveness_bonuses:
-                        type_effectiveness_bonuses[key] = 0
-                    type_effectiveness_bonuses[key] += effect.get('value', 0)
+        if attacker_equipment_list:
+            for equipment in attacker_equipment_list:
+                if equipment and equipment.get('effects'):
+                    for effect in equipment['effects']:
+                        if effect.get('type') == 'type_effectiveness_bonus':
+                            key = (effect.get('attacker'), effect.get('defender'))
+                            if key not in type_effectiveness_bonuses:
+                                type_effectiveness_bonuses[key] = 0
+                            type_effectiveness_bonuses[key] += effect.get('value', 0)
         
         for defender_type, hp_ratio in defender_hp_ratios.items():
             # 공격자 병종별로 상성 계수를 적용하여 가중 평균 계산
@@ -194,7 +204,7 @@ class CombatCalculator:
                     if key in self.effectiveness:
                         multiplier = self.effectiveness[key]
                     
-                    # 영웅 상성 보너스 적용
+                    # 장비 상성 보너스 적용 (합연산)
                     if key in type_effectiveness_bonuses:
                         multiplier += type_effectiveness_bonuses[key]
                     
@@ -204,7 +214,7 @@ class CombatCalculator:
             # 가중 평균: (기본 총 공격력 * 가중 상성계수 * HP비율)
             final_attack_power += base_total_attack * weighted_multiplier * hp_ratio
         
-        # 적 공격력 패널티 적용 (방어자 영웅 효과)
+        # 적 공격력 패널티 적용 (방어자 장비 효과)
         final_attack_power *= enemy_attack_penalty
         
         return final_attack_power
@@ -244,7 +254,7 @@ class CombatCalculator:
         return casualties
     
     def simulate_combat(self, army_a_units, army_b_units, has_food_a=True, has_food_b=True,
-                        hero_a=None, hero_b=None):
+                        equipment_list_a=None, equipment_list_b=None):
         """
         전투를 시뮬레이션하고 결과를 반환합니다.
         
@@ -253,8 +263,8 @@ class CombatCalculator:
             army_b_units (dict): B군 병종별 수량
             has_food_a (bool): A군 식량 보유 여부 (기본값: True)
             has_food_b (bool): B군 식량 보유 여부 (기본값: True)
-            hero_a (dict): A군 영웅 데이터 (None이면 영웅 없음)
-            hero_b (dict): B군 영웅 데이터 (None이면 영웅 없음)
+            equipment_list_a (list): A군 장비 딕셔너리 리스트 (None이면 장비 없음)
+            equipment_list_b (list): B군 장비 딕셔너리 리스트 (None이면 장비 없음)
         
         Returns:
             dict: 전투 결과
@@ -269,30 +279,36 @@ class CombatCalculator:
                 - army_a_remaining: A군 병종별 잔존 병력
                 - army_b_remaining: B군 병종별 잔존 병력
         """
-        # 적 공격력 패널티 계산 (방어자 영웅 효과)
+        # 적 공격력 패널티 계산 (방어자 장비 효과, 곱연산)
         enemy_penalty_a = 1.0  # B군이 A군을 공격할 때 적용되는 패널티
         enemy_penalty_b = 1.0  # A군이 B군을 공격할 때 적용되는 패널티
         
-        if hero_a and hero_a.get('effects'):
-            for effect in hero_a['effects']:
-                if effect.get('type') == 'enemy_attack_penalty':
-                    enemy_penalty_b *= effect.get('value', 1.0)
+        if equipment_list_a:
+            for equipment in equipment_list_a:
+                if equipment and equipment.get('effects'):
+                    for effect in equipment['effects']:
+                        if effect.get('type') == 'enemy_attack_penalty':
+                            enemy_penalty_b *= effect.get('value', 1.0)
         
-        if hero_b and hero_b.get('effects'):
-            for effect in hero_b['effects']:
-                if effect.get('type') == 'enemy_attack_penalty':
-                    enemy_penalty_a *= effect.get('value', 1.0)
+        if equipment_list_b:
+            for equipment in equipment_list_b:
+                if equipment and equipment.get('effects'):
+                    for effect in equipment['effects']:
+                        if effect.get('type') == 'enemy_attack_penalty':
+                            enemy_penalty_a *= effect.get('value', 1.0)
         
-        # 1단계: 총 HP 풀 계산 (영웅 효과 적용)
-        army_a_total_hp = self.calculate_total_hp(army_a_units, hero_a)
-        army_b_total_hp = self.calculate_total_hp(army_b_units, hero_b)
+        # 1단계: 총 HP 풀 계산 (장비 효과 적용)
+        army_a_total_hp = self.calculate_total_hp(army_a_units, equipment_list_a)
+        army_b_total_hp = self.calculate_total_hp(army_b_units, equipment_list_b)
         
-        # 2단계: 최종 공격력 계산 (영웅 효과 적용)
+        # 2단계: 최종 공격력 계산 (장비 효과 적용)
         army_a_fap = self.calculate_final_attack_power(army_a_units, army_b_units,
-                                                       attacker_hero=hero_a, defender_hero=hero_b,
+                                                       attacker_equipment_list=equipment_list_a, 
+                                                       defender_equipment_list=equipment_list_b,
                                                        enemy_attack_penalty=enemy_penalty_b)
         army_b_fap = self.calculate_final_attack_power(army_b_units, army_a_units,
-                                                       attacker_hero=hero_b, defender_hero=hero_a,
+                                                       attacker_equipment_list=equipment_list_b, 
+                                                       defender_equipment_list=equipment_list_a,
                                                        enemy_attack_penalty=enemy_penalty_a)
         
         # 식량 패널티 적용
@@ -343,7 +359,7 @@ class CombatCalculator:
     
     def simulate_multi_round_combat(self, army_a_units, army_b_units, max_rounds=12, 
                                      initial_food_a=None, initial_food_b=None,
-                                     hero_a=None, hero_b=None):
+                                     equipment_list_a=None, equipment_list_b=None):
         """
         한쪽 세력이 전멸할 때까지 전투를 반복합니다.
         
@@ -353,8 +369,8 @@ class CombatCalculator:
             max_rounds (int): 최대 라운드 수 (무한 루프 방지, 기본값 12)
             initial_food_a (int): A군 초기 식량 (None이면 식량 무제한)
             initial_food_b (int): B군 초기 식량 (None이면 식량 무제한)
-            hero_a (dict): A군 영웅 데이터 (None이면 영웅 없음)
-            hero_b (dict): B군 영웅 데이터 (None이면 영웅 없음)
+            equipment_list_a (list): A군 장비 딕셔너리 리스트 (None이면 장비 없음)
+            equipment_list_b (list): B군 장비 딕셔너리 리스트 (None이면 장비 없음)
         
         Returns:
             dict: 멀티 라운드 전투 결과
@@ -406,7 +422,8 @@ class CombatCalculator:
             
             round_result = self.simulate_combat(current_a_units, current_b_units, 
                                                 has_food_a=has_food_a, has_food_b=has_food_b,
-                                                hero_a=hero_a, hero_b=hero_b)
+                                                equipment_list_a=equipment_list_a, 
+                                                equipment_list_b=equipment_list_b)
             round_result['round'] = round_num
             round_result['army_a_initial'] = current_a_units.copy()
             round_result['army_b_initial'] = current_b_units.copy()
