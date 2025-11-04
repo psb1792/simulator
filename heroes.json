@@ -1,0 +1,35 @@
+[
+    {
+        "name": "없음",
+        "effects": []
+    },
+    {
+        "name": "용맹한 장군",
+        "effects": [
+            {"type": "attack_bonus", "value": 1.2},
+            {"type": "hp_bonus", "value": 1.1}
+        ]
+    },
+    {
+        "name": "전략가",
+        "effects": [
+            {"type": "type_effectiveness_bonus", "attacker": "보병", "defender": "기병", "value": 0.2},
+            {"type": "type_effectiveness_bonus", "attacker": "기병", "defender": "보병", "value": 0.2}
+        ]
+    },
+    {
+        "name": "방어 전문가",
+        "effects": [
+            {"type": "hp_bonus", "value": 1.2},
+            {"type": "enemy_attack_penalty", "value": 0.9}
+        ]
+    },
+    {
+        "name": "마법 지휘관",
+        "effects": [
+            {"type": "attack_bonus", "value": 1.15},
+            {"type": "hp_bonus", "value": 1.15},
+            {"type": "type_effectiveness_bonus", "attacker": "마법병", "defender": "공성병", "value": 0.3}
+        ]
+    }
+]
