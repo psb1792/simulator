@@ -20,8 +20,8 @@
         "name": "전략가의 전술서",
         "category": "악세서리",
         "effects": [
-            {"type": "type_effectiveness_bonus", "attacker": "보병", "defender": "기병", "value": 0.2},
-            {"type": "type_effectiveness_bonus", "attacker": "기병", "defender": "보병", "value": 0.2}
+            {"type": "type_effectiveness_bonus", "attacker": "보병", "defender": "기병", "value": 0.4},
+            {"type": "type_effectiveness_bonus", "attacker": "기병", "defender": "보병", "value": 0.4}
         ]
     },
     {

@@ -1,5 +1,6 @@
 """전투 계산 엔진"""
-from data_loader import load_unit_stats, load_type_effectiveness, get_food_consumption, load_equipment
+import math
+from data_loader import load_unit_stats, load_type_effectiveness, get_food_consumption, load_equipment, is_elite_unit
 
 
 class CombatCalculator:
@@ -239,7 +240,9 @@ class CombatCalculator:
     def calculate_casualties(self, army_units, casualty_ratio):
         """
         병종별 사상자 수를 계산합니다.
-        소수점 이하는 버립니다 (내림).
+        병종에 따라 다른 반올림 방식을 사용합니다:
+        - 기본(일반 유닛): 올림 (ceil)
+        - 엘리트 유닛: 반올림 (round)
         
         Args:
             army_units (dict): 병종별 수량 딕셔너리
@@ -250,7 +253,16 @@ class CombatCalculator:
         """
         casualties = {}
         for unit_type, quantity in army_units.items():
-            casualties[unit_type] = int(quantity * casualty_ratio)
+            raw_casualties = quantity * casualty_ratio
+            
+            # 엘리트 유닛인지 확인
+            if is_elite_unit(unit_type, self.unit_stats):
+                # 엘리트 유닛: 반올림
+                casualties[unit_type] = round(raw_casualties)
+            else:
+                # 기본(일반 유닛): 올림
+                casualties[unit_type] = math.ceil(raw_casualties)
+        
         return casualties
     
     def simulate_combat(self, army_a_units, army_b_units, has_food_a=True, has_food_b=True,

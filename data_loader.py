@@ -9,7 +9,7 @@ def load_unit_stats():
     공_체 밸런싱.csv 파일을 읽어서 병종별 스탯을 반환합니다.
     
     Returns:
-        dict: 병종명을 키로 하고, 공격력/체력/비용/식량소비량을 값으로 하는 딕셔너리
+        dict: 병종명을 키로 하고, 공격력/체력/비용/식량소비량/역할을 값으로 하는 딕셔너리
     """
     df = pd.read_csv('공_체 밸런싱.csv', encoding='utf-8')
     
@@ -21,6 +21,10 @@ def load_unit_stats():
             'hp': int(row['체력(HP)']),
             'cost': int(row['비용(Cost)'])
         }
+        
+        # 역할 읽어오기
+        if '역할' in df.columns:
+            unit_stats[unit_type]['role'] = str(row['역할'])
         
         # 식량 소비량 읽어오기 (공백 허용)
         food_col = None
@@ -140,6 +144,25 @@ def load_equipment():
     except FileNotFoundError:
         # 파일이 없으면 빈 딕셔너리 반환
         return {}
+
+
+def is_elite_unit(unit_type, unit_stats):
+    """
+    유닛이 엘리트 유닛인지 판별합니다.
+    역할에 "엘리트" 키워드가 포함되어 있으면 엘리트 유닛으로 간주합니다.
+    
+    Args:
+        unit_type (str): 병종명
+        unit_stats (dict): 유닛 스탯 딕셔너리 (load_unit_stats()의 반환값)
+    
+    Returns:
+        bool: 엘리트 유닛 여부
+    """
+    if unit_type not in unit_stats:
+        return False
+    
+    role = unit_stats[unit_type].get('role', '')
+    return '엘리트' in str(role)
 
 
 if __name__ == '__main__':
