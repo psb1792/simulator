@@ -13,7 +13,10 @@ class CombatSimulatorGUI:
         self.root.geometry("900x800")
         
         self.calculator = CombatCalculator()
-        self.unit_types = ['보병', '기병', '마법병', '공성병']
+        # A측(공성측): 공성병 포함
+        self.unit_types_a = ['보병', '기병', '마법병', '공성병']
+        # B측(수성측): 성벽 포함
+        self.unit_types_b = ['보병', '기병', '마법병', '성벽']
         
         self.create_widgets()
     
@@ -37,7 +40,7 @@ class CombatSimulatorGUI:
         army_a_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
         
         self.army_a_entries = {}
-        for i, unit_type in enumerate(self.unit_types):
+        for i, unit_type in enumerate(self.unit_types_a):
             row_frame = ttk.Frame(army_a_frame)
             row_frame.grid(row=i, column=0, sticky="ew", pady=2)
             
@@ -51,18 +54,26 @@ class CombatSimulatorGUI:
         
         # A군 식량 입력
         food_a_frame = ttk.Frame(army_a_frame)
-        food_a_frame.grid(row=len(self.unit_types), column=0, sticky="ew", pady=5)
+        food_a_frame.grid(row=len(self.unit_types_a), column=0, sticky="ew", pady=5)
         ttk.Label(food_a_frame, text="식량:", width=10).pack(side=tk.LEFT, padx=5)
         self.food_a_entry = ttk.Entry(food_a_frame, width=15)
         self.food_a_entry.insert(0, "무제한")
         self.food_a_entry.pack(side=tk.LEFT, padx=5)
         
+        # A군 코스트 계산
+        cost_a_frame = ttk.Frame(army_a_frame)
+        cost_a_frame.grid(row=len(self.unit_types_a) + 1, column=0, sticky="ew", pady=5)
+        cost_a_button = ttk.Button(cost_a_frame, text="계산", command=self.calculate_cost_a)
+        cost_a_button.pack(side=tk.LEFT, padx=5)
+        self.cost_display_a = ttk.Entry(cost_a_frame, width=15, state="readonly")
+        self.cost_display_a.pack(side=tk.LEFT, padx=5)
+        
         # A군 장비 선택
         equipment_a_label = ttk.Label(army_a_frame, text="플레이어 장비:")
-        equipment_a_label.grid(row=len(self.unit_types) + 1, column=0, sticky="w", pady=(10, 5), padx=5)
+        equipment_a_label.grid(row=len(self.unit_types_a) + 2, column=0, sticky="w", pady=(10, 5), padx=5)
         
         equipment_a_scroll_frame = ttk.Frame(army_a_frame)
-        equipment_a_scroll_frame.grid(row=len(self.unit_types) + 2, column=0, sticky="ew", pady=5)
+        equipment_a_scroll_frame.grid(row=len(self.unit_types_a) + 3, column=0, sticky="ew", pady=5)
         
         equipment_a_canvas = tk.Canvas(equipment_a_scroll_frame, height=100)
         equipment_a_scrollbar = ttk.Scrollbar(equipment_a_scroll_frame, orient="vertical", command=equipment_a_canvas.yview)
@@ -94,7 +105,7 @@ class CombatSimulatorGUI:
         army_b_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
         
         self.army_b_entries = {}
-        for i, unit_type in enumerate(self.unit_types):
+        for i, unit_type in enumerate(self.unit_types_b):
             row_frame = ttk.Frame(army_b_frame)
             row_frame.grid(row=i, column=0, sticky="ew", pady=2)
             
@@ -108,18 +119,26 @@ class CombatSimulatorGUI:
         
         # B군 식량 입력
         food_b_frame = ttk.Frame(army_b_frame)
-        food_b_frame.grid(row=len(self.unit_types), column=0, sticky="ew", pady=5)
+        food_b_frame.grid(row=len(self.unit_types_b), column=0, sticky="ew", pady=5)
         ttk.Label(food_b_frame, text="식량:", width=10).pack(side=tk.LEFT, padx=5)
         self.food_b_entry = ttk.Entry(food_b_frame, width=15)
         self.food_b_entry.insert(0, "무제한")
         self.food_b_entry.pack(side=tk.LEFT, padx=5)
         
+        # B군 코스트 계산
+        cost_b_frame = ttk.Frame(army_b_frame)
+        cost_b_frame.grid(row=len(self.unit_types_b) + 1, column=0, sticky="ew", pady=5)
+        cost_b_button = ttk.Button(cost_b_frame, text="계산", command=self.calculate_cost_b)
+        cost_b_button.pack(side=tk.LEFT, padx=5)
+        self.cost_display_b = ttk.Entry(cost_b_frame, width=15, state="readonly")
+        self.cost_display_b.pack(side=tk.LEFT, padx=5)
+        
         # B군 장비 선택
         equipment_b_label = ttk.Label(army_b_frame, text="플레이어 장비:")
-        equipment_b_label.grid(row=len(self.unit_types) + 1, column=0, sticky="w", pady=(10, 5), padx=5)
+        equipment_b_label.grid(row=len(self.unit_types_b) + 2, column=0, sticky="w", pady=(10, 5), padx=5)
         
         equipment_b_scroll_frame = ttk.Frame(army_b_frame)
-        equipment_b_scroll_frame.grid(row=len(self.unit_types) + 2, column=0, sticky="ew", pady=5)
+        equipment_b_scroll_frame.grid(row=len(self.unit_types_b) + 3, column=0, sticky="ew", pady=5)
         
         equipment_b_canvas = tk.Canvas(equipment_b_scroll_frame, height=100)
         equipment_b_scrollbar = ttk.Scrollbar(equipment_b_scroll_frame, orient="vertical", command=equipment_b_canvas.yview)
@@ -293,13 +312,13 @@ class CombatSimulatorGUI:
         output.append(f"사상률: {result['army_a_casualty_ratio']:.2%}")
         output.append("")
         output.append("  초기 병력:")
-        for unit_type in self.unit_types:
+        for unit_type in self.unit_types_a:
             if army_a_units[unit_type] > 0:
                 output.append(f"    {unit_type}: {army_a_units[unit_type]:,}명")
         output.append("")
         output.append("  사상자:")
         has_casualties = False
-        for unit_type in self.unit_types:
+        for unit_type in self.unit_types_a:
             casualties = result['army_a_casualties'].get(unit_type, 0)
             if casualties > 0:
                 output.append(f"    {unit_type}: {casualties:,}명")
@@ -309,7 +328,7 @@ class CombatSimulatorGUI:
         output.append("")
         output.append("  잔존 병력:")
         has_remaining = False
-        for unit_type in self.unit_types:
+        for unit_type in self.unit_types_a:
             remaining = result['army_a_remaining'].get(unit_type, 0)
             if remaining > 0:
                 output.append(f"    {unit_type}: {remaining:,}명")
@@ -328,13 +347,13 @@ class CombatSimulatorGUI:
         output.append(f"사상률: {result['army_b_casualty_ratio']:.2%}")
         output.append("")
         output.append("  초기 병력:")
-        for unit_type in self.unit_types:
+        for unit_type in self.unit_types_b:
             if army_b_units[unit_type] > 0:
                 output.append(f"    {unit_type}: {army_b_units[unit_type]:,}명")
         output.append("")
         output.append("  사상자:")
         has_casualties = False
-        for unit_type in self.unit_types:
+        for unit_type in self.unit_types_b:
             casualties = result['army_b_casualties'].get(unit_type, 0)
             if casualties > 0:
                 output.append(f"    {unit_type}: {casualties:,}명")
@@ -344,7 +363,7 @@ class CombatSimulatorGUI:
         output.append("")
         output.append("  잔존 병력:")
         has_remaining = False
-        for unit_type in self.unit_types:
+        for unit_type in self.unit_types_b:
             remaining = result['army_b_remaining'].get(unit_type, 0)
             if remaining > 0:
                 output.append(f"    {unit_type}: {remaining:,}명")
@@ -402,7 +421,7 @@ class CombatSimulatorGUI:
             # A군 정보
             output.append("【 A군 】")
             output.append(f"  초기 병력:")
-            for unit_type in self.unit_types:
+            for unit_type in self.unit_types_a:
                 initial = round_data['army_a_initial'].get(unit_type, 0)
                 if initial > 0:
                     output.append(f"    {unit_type}: {initial:,}명")
@@ -415,7 +434,7 @@ class CombatSimulatorGUI:
             output.append(f"  사상률: {round_data['army_a_casualty_ratio']:.2%}")
             output.append("  사상자:")
             has_casualties = False
-            for unit_type in self.unit_types:
+            for unit_type in self.unit_types_a:
                 casualties = round_data['army_a_casualties'].get(unit_type, 0)
                 if casualties > 0:
                     output.append(f"    {unit_type}: {casualties:,}명")
@@ -424,7 +443,7 @@ class CombatSimulatorGUI:
                 output.append("    없음")
             output.append("  잔존 병력:")
             has_remaining = False
-            for unit_type in self.unit_types:
+            for unit_type in self.unit_types_a:
                 remaining = round_data['army_a_remaining'].get(unit_type, 0)
                 if remaining > 0:
                     output.append(f"    {unit_type}: {remaining:,}명")
@@ -436,7 +455,7 @@ class CombatSimulatorGUI:
             # B군 정보
             output.append("【 B군 】")
             output.append(f"  초기 병력:")
-            for unit_type in self.unit_types:
+            for unit_type in self.unit_types_b:
                 initial = round_data['army_b_initial'].get(unit_type, 0)
                 if initial > 0:
                     output.append(f"    {unit_type}: {initial:,}명")
@@ -449,7 +468,7 @@ class CombatSimulatorGUI:
             output.append(f"  사상률: {round_data['army_b_casualty_ratio']:.2%}")
             output.append("  사상자:")
             has_casualties = False
-            for unit_type in self.unit_types:
+            for unit_type in self.unit_types_b:
                 casualties = round_data['army_b_casualties'].get(unit_type, 0)
                 if casualties > 0:
                     output.append(f"    {unit_type}: {casualties:,}명")
@@ -458,7 +477,7 @@ class CombatSimulatorGUI:
                 output.append("    없음")
             output.append("  잔존 병력:")
             has_remaining = False
-            for unit_type in self.unit_types:
+            for unit_type in self.unit_types_b:
                 remaining = round_data['army_b_remaining'].get(unit_type, 0)
                 if remaining > 0:
                     output.append(f"    {unit_type}: {remaining:,}명")
@@ -477,7 +496,7 @@ class CombatSimulatorGUI:
         output.append("【 A군 최종 병력 】")
         final_a_total = sum(multi_result['final_army_a'].values())
         if final_a_total > 0:
-            for unit_type in self.unit_types:
+            for unit_type in self.unit_types_a:
                 remaining = multi_result['final_army_a'].get(unit_type, 0)
                 if remaining > 0:
                     output.append(f"  {unit_type}: {remaining:,}명")
@@ -487,7 +506,7 @@ class CombatSimulatorGUI:
         output.append("【 B군 최종 병력 】")
         final_b_total = sum(multi_result['final_army_b'].values())
         if final_b_total > 0:
-            for unit_type in self.unit_types:
+            for unit_type in self.unit_types_b:
                 remaining = multi_result['final_army_b'].get(unit_type, 0)
                 if remaining > 0:
                     output.append(f"  {unit_type}: {remaining:,}명")
@@ -498,6 +517,52 @@ class CombatSimulatorGUI:
         
         self.result_text.insert(1.0, "\n".join(output))
         self.result_text.see(1.0)
+    
+    def calculate_army_cost(self, army_entries, unit_types):
+        """
+        군대의 총 코스트를 계산합니다.
+        
+        Args:
+            army_entries (dict): 병종별 Entry 위젯 딕셔너리
+            unit_types (list): 병종 리스트
+        
+        Returns:
+            int: 총 코스트
+        """
+        total_cost = 0
+        for unit_type in unit_types:
+            if unit_type in army_entries:
+                try:
+                    quantity = int(army_entries[unit_type].get())
+                    if quantity > 0 and unit_type in self.calculator.unit_stats:
+                        unit_cost = self.calculator.unit_stats[unit_type]['cost']
+                        total_cost += quantity * unit_cost
+                except ValueError:
+                    # 잘못된 입력은 0으로 처리
+                    pass
+        return total_cost
+    
+    def calculate_cost_a(self):
+        """A군의 총 코스트를 계산하고 표시합니다."""
+        try:
+            total_cost = self.calculate_army_cost(self.army_a_entries, self.unit_types_a)
+            self.cost_display_a.config(state="normal")
+            self.cost_display_a.delete(0, tk.END)
+            self.cost_display_a.insert(0, f"총 코스트: {total_cost:,}")
+            self.cost_display_a.config(state="readonly")
+        except Exception as e:
+            messagebox.showerror("오류", f"코스트 계산 중 오류가 발생했습니다: {str(e)}")
+    
+    def calculate_cost_b(self):
+        """B군의 총 코스트를 계산하고 표시합니다."""
+        try:
+            total_cost = self.calculate_army_cost(self.army_b_entries, self.unit_types_b)
+            self.cost_display_b.config(state="normal")
+            self.cost_display_b.delete(0, tk.END)
+            self.cost_display_b.insert(0, f"총 코스트: {total_cost:,}")
+            self.cost_display_b.config(state="readonly")
+        except Exception as e:
+            messagebox.showerror("오류", f"코스트 계산 중 오류가 발생했습니다: {str(e)}")
     
     def reset_inputs(self):
         """입력 필드를 초기화합니다."""
@@ -511,6 +576,15 @@ class CombatSimulatorGUI:
         self.food_a_entry.insert(0, "무제한")
         self.food_b_entry.delete(0, tk.END)
         self.food_b_entry.insert(0, "무제한")
+        # 코스트 표시 필드 초기화
+        if hasattr(self, 'cost_display_a'):
+            self.cost_display_a.config(state="normal")
+            self.cost_display_a.delete(0, tk.END)
+            self.cost_display_a.config(state="readonly")
+        if hasattr(self, 'cost_display_b'):
+            self.cost_display_b.config(state="normal")
+            self.cost_display_b.delete(0, tk.END)
+            self.cost_display_b.config(state="readonly")
         if hasattr(self, 'equipment_a_vars'):
             for var in self.equipment_a_vars.values():
                 var.set(False)
